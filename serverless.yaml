@@ -1,0 +1,14 @@
+service: nasa-mars-robot
+
+provider:
+  name: aws
+  region: eu-central-1
+  runtime: nodejs12.x
+
+functions:
+  webhook:
+    handler: handler.webhook
+    events:
+      - http:
+          path: webhook
+          method: post
