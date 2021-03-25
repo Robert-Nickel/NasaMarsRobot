@@ -4,12 +4,12 @@ const request = require('request');
 const AWS = require("aws-sdk");
 
 module.exports.webhook = (event, context, callback) => {
-
-
-
   const token = process.env.BOT_TOKEN;
   const BASE_URL = `https://api.telegram.org/bot${token}/`
   const NEXT = "Next"
+  const DETAILS = "Details"
+  const FINAL = "final"
+  const NASA_RESOURCES_URL = "https://mars.nasa.gov/resources/"
 
   const documentClient = new AWS.DynamoDB.DocumentClient({
     region: "eu-central-1",
@@ -20,88 +20,112 @@ module.exports.webhook = (event, context, callback) => {
   console.log(body)
   console.log('---')
 
-  const text = body.message.text
-  const chatId = body.message.chat.id.toString()
-
-  if (text == "/start") {
-    documentClient
-      .get({
-        TableName: "mars_images",
-        Key: {
-          id: "1" // This is an index to the latest image
-        }
-      })
-      .promise()
-      .then((data) => {
-        const index = data.Item
-        documentClient
-          .get({
-            TableName: "mars_images",
-            Key: {
-              id: index.next
-            }
-          })
-          .promise()
-          .then((data) => {
-            const image = data.Item
-            postImage(chatId, image)
-
-            documentClient
-              .put({
-                TableName: "mars_users",
-                Item: {
-                  id: chatId,
-                  next_image: image.next
-                },
-              })
-              .promise()
-              .then(() => console.log('user created'))
-          })
-      })
-  }
-  else if (text.toLowerCase() === NEXT.toLowerCase() || '/' + text.toLowerCase() === NEXT.toLowerCase()) {
+  if (typeof body.callback_query !== 'undefined') {
+    const callback_query_data = body.callback_query.data
+    const chatId = body.callback_query.from.id.toString()
     documentClient.get({
       TableName: "mars_users",
       Key: {
         id: chatId
       }
-    }).promise().then((data) => {
-      const user = data.Item
-      if (user.next_image === "1000000") {
-        postMessage(chatId, 'You reached the end of the archive. But not the end of human knowledge. Keep going: https://en.wikipedia.org/wiki/Main_Page')
-      } else {
+    }).promise().then((userData) => {
+      const user = userData.Item
+      if (callback_query_data === NEXT) {
+        if (user.next_image === FINAL) {
+          postMessage(chatId, 'You reached the end of the archive. But not the end of human knowledge. Keep going: https://en.wikipedia.org/wiki/Main_Page', (error, response, body) => { })
+        } else {
+          documentClient
+            .get({
+              TableName: "mars_images",
+              Key: {
+                id: user.next_image
+              }
+            })
+            .promise()
+            .then((imageData) => {
+              const image = imageData.Item
+              postImage(chatId, image, () => {
+                user.current_image = image.id
+                if (image.next) {
+                  user.next_image = image.next
+                } else {
+                  user.next_image = FINAL
+                }
+                documentClient.put({ TableName: "mars_users", Item: user }).promise()
+                  .then(() => {
+                    return callback(null, {
+                      statusCode: 200
+                    });
+                  });
+              })
+            })
+        }
+      } else if (callback_query_data === DETAILS) {
         documentClient
           .get({
             TableName: "mars_images",
             Key: {
-              id: user.next_image
+              id: user.current_image
             }
           })
           .promise()
           .then((data) => {
             const image = data.Item
-            postImage(chatId, image, (error, response, body) => {
-              if (image.next) {
-                user.next_image = image.next
-              } else {
-                user.next_image = "1000000"
-              }
-              documentClient.put({ TableName: "mars_users", Item: user }).promise()
-                .then(() => {
-                  return callback(null, {
-                    statusCode: 200
-                  });
-                });
+            postMessage(chatId, image.details, (error, response, body) => {
+              console.log('response to message ' + image.details + ' was ' + response)
+              return callback(null, {
+                statusCode: 200
+              });
             })
           })
       }
     })
   } else {
-    postMessage(chatId, text + ' isn\'t marsian. Try /next or /start again.')
+    const text = body.message.text
+    const chatId = body.message.chat.id.toString()
+
+    if (text == "/start") {
+      documentClient
+        .get({
+          TableName: "mars_images",
+          Key: {
+            id: "1" // This is an index to the latest image
+          }
+        })
+        .promise()
+        .then((data) => {
+          const index = data.Item
+          documentClient
+            .get({
+              TableName: "mars_images",
+              Key: {
+                id: index.next
+              }
+            })
+            .promise()
+            .then((data) => {
+              const image = data.Item
+              postImage(chatId, image)
+
+              documentClient
+                .put({
+                  TableName: "mars_users",
+                  Item: {
+                    id: chatId,
+                    next_image: image.next
+                  },
+                })
+                .promise()
+                .then(() => console.log('user created'))
+            })
+        })
+    } else {
+      postMessage(chatId, text + ' isn\'t marsian.', (error, response, body) => { })
+    }
+    return callback(null, {
+      statusCode: 200
+    });
   }
-  return callback(null, {
-    statusCode: 200
-  });
 
   function postMessage(chatId, text, sendMessageCallback) {
     request.post(BASE_URL + 'sendMessage', {
@@ -114,6 +138,15 @@ module.exports.webhook = (event, context, callback) => {
     });
   }
 
+  function getReplyMarkup(source) {
+    return JSON.stringify({
+      inline_keyboard: [
+        [{ text: DETAILS, callback_data: DETAILS }],
+        [{ text: NEXT, callback_data: NEXT }],
+        [{ text: 'View Source', url: source }]],
+    })
+  }
+
   function postImage(chatId, image, postImageCallback) {
     if (isPhoto(image)) {
       request.post(BASE_URL + 'sendPhoto', {
@@ -121,16 +154,12 @@ module.exports.webhook = (event, context, callback) => {
           chat_id: chatId,
           photo: image.telegram_id ? image.telegram_id : image.url,
           caption: image.title,
-          reply_markup: JSON.stringify({
-            keyboard: [[NEXT]],
-            resize_keyboard: true,
-            one_time_keyboard: true
-          })
+          reply_markup: getReplyMarkup(NASA_RESOURCES_URL + image.id)
         }
-      }, (error, request, body) => {
+      }, (error, response, body) => {
         addTelegramIdIfMissing(image, body)
         if (postImageCallback) {
-          postImageCallback(error, request, body)
+          postImageCallback(error, response, body)
         }
       })
     } else if (isImageFormat(image, 'gif')) {
@@ -139,16 +168,12 @@ module.exports.webhook = (event, context, callback) => {
           chat_id: chatId,
           animation: image.telegram_id ? image.telegram_id : image.url,
           caption: image.title,
-          reply_markup: JSON.stringify({
-            keyboard: [[NEXT]],
-            resize_keyboard: true,
-            one_time_keyboard: true
-          })
+          reply_markup: getReplyMarkup(NASA_RESOURCES_URL + image.id)
         }
-      }, (error, request, body) => {
+      }, (error, response, body) => {
         addTelegramIdIfMissing(image, body)
         if (postImageCallback) {
-          postImageCallback(error, request, body)
+          postImageCallback(error, response, body)
         }
       })
     }
