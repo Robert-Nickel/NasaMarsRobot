@@ -3,7 +3,7 @@
 const request = require('request');
 const AWS = require("aws-sdk");
 
-module.exports.webhook = (event, context, callback) => {
+module.exports.handler = (event, context, callback) => {
   const token = process.env.BOT_TOKEN;
   const BASE_URL = `https://api.telegram.org/bot${token}/`
   const NEXT = "Next"
@@ -72,7 +72,6 @@ module.exports.webhook = (event, context, callback) => {
           .then((data) => {
             const image = data.Item
             postMessage(chatId, image.details, (error, response, body) => {
-              console.log('response to message ' + image.details + ' was ' + response)
               return callback(null, {
                 statusCode: 200
               });
@@ -112,6 +111,7 @@ module.exports.webhook = (event, context, callback) => {
                   TableName: "mars_users",
                   Item: {
                     id: chatId,
+                    current_image: image.id,
                     next_image: image.next
                   },
                 })
@@ -131,7 +131,8 @@ module.exports.webhook = (event, context, callback) => {
     request.post(BASE_URL + 'sendMessage', {
       form: {
         chat_id: chatId,
-        text: text
+        text: text,
+        disable_web_page_preview: true
       }
     }, (error, response, body) => {
       sendMessageCallback(error, response, body)
@@ -142,8 +143,9 @@ module.exports.webhook = (event, context, callback) => {
     return JSON.stringify({
       inline_keyboard: [
         [{ text: DETAILS, callback_data: DETAILS }],
-        [{ text: NEXT, callback_data: NEXT }],
-        [{ text: 'View Source', url: source }]],
+        [{ text: 'View Source', url: source }],
+        [{ text: NEXT, callback_data: NEXT }]
+      ]
     })
   }
 

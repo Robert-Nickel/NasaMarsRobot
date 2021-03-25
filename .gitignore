@@ -1,4 +1,5 @@
 /node_modules
+/.serverless
 package-lock.json
 function.zip
 .DS_Store

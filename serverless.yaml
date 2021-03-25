@@ -4,11 +4,17 @@ provider:
   name: aws
   region: eu-central-1
   runtime: nodejs12.x
+  iam:
+    role:
+      managedPolicies:
+        - 'arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess'
 
 functions:
   webhook:
-    handler: handler.webhook
+    handler: webhook.handler
     events:
       - http:
           path: webhook
           method: post
+  scraper:
+    handler: scraper.handler
