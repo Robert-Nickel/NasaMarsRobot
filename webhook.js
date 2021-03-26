@@ -7,10 +7,10 @@ module.exports.handler = (event, context, callback) => {
   const token = process.env.BOT_TOKEN;
   const BASE_URL = `https://api.telegram.org/bot${token}/`
   const NASA_RESOURCES_URL = 'https://mars.nasa.gov/resources/'
-  const PREVIOUS_IMAGE = '<< Previous Image'
-  const NEXT_IMAGE = 'Next Image >>'
-  const DETAILS = 'Details'
-  const CLOSE_DETAILS = 'Close Details'
+  const PREVIOUS_IMAGE = '⇠ Older Image'
+  const NEXT_IMAGE = 'Newer Image ⇢'
+  const DETAILS = 'Explanation 💡'
+  const CLOSE_DETAILS = '⇡ Close Explanation ⇡'
 
   const documentClient = new AWS.DynamoDB.DocumentClient({
     region: "eu-central-1",
@@ -197,42 +197,25 @@ module.exports.handler = (event, context, callback) => {
     return JSON.stringify({
       inline_keyboard: [
         navigation,
-        [{ text: 'Details', callback_data: DETAILS }], // TODO: id for details?
-        [{ text: 'View Source', url: NASA_RESOURCES_URL + image.id }]
+        [{ text: 'Details', callback_data: DETAILS }, { text: 'View Source', url: NASA_RESOURCES_URL + image.id }]
       ]
     })
   }
 
   function postImage(chatId, image, postImageCallback) {
-    if (isPhoto(image)) {
-      request.post(BASE_URL + 'sendPhoto', {
-        form: {
-          chat_id: chatId,
-          photo: image.telegram_id ? image.telegram_id : image.url,
-          caption: image.title,
-          reply_markup: getImageReplyMarkup(image)
-        }
-      }, (error, response, body) => {
-        addTelegramIdIfMissing(image, body)
-        if (postImageCallback) {
-          postImageCallback(error, response, body)
-        }
-      })
-    } else if (isImageFormat(image, 'gif')) {
-      request.post(BASE_URL + 'sendAnimation', {
-        form: {
-          chat_id: chatId,
-          animation: image.telegram_id ? image.telegram_id : image.url,
-          caption: image.title,
-          reply_markup: getImageReplyMarkup(image)
-        }
-      }, (error, response, body) => {
-        addTelegramIdIfMissing(image, body)
-        if (postImageCallback) {
-          postImageCallback(error, response, body)
-        }
-      })
-    }
+    request.post(BASE_URL + isImageFormat(image, 'gif') ? 'sendAnimation' : 'sendPhoto', {
+      form: {
+        chat_id: chatId,
+        photo: image.telegram_id ? image.telegram_id : image.url,
+        caption: image.title,
+        reply_markup: getImageReplyMarkup(image)
+      }
+    }, (error, response, body) => {
+      addTelegramIdIfMissing(image, body)
+      if (postImageCallback) {
+        postImageCallback(error, response, body)
+      }
+    })
   }
 
   function addTelegramIdIfMissing(image, body) {
