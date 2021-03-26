@@ -7,8 +7,8 @@ module.exports.handler = (event, context, callback) => {
   const token = process.env.BOT_TOKEN;
   const BASE_URL = `https://api.telegram.org/bot${token}/`
   const NASA_RESOURCES_URL = 'https://mars.nasa.gov/resources/'
-  const PREVIOUS_IMAGE = '« Older Image'
-  const NEXT_IMAGE = 'Newer Image »'
+  const PREVIOUS_IMAGE = '⇠ Older Image'
+  const NEXT_IMAGE = 'Newer Image ⇢'
   const DETAILS = 'Explanation 💡'
   const CLOSE_DETAILS = '⇡ Close Explanation ⇡'
   const SOURCE = 'View Source ℹ️'
@@ -140,7 +140,7 @@ module.exports.handler = (event, context, callback) => {
             request.post(BASE_URL + 'sendMessage', {
               form: {
                 chat_id: chatId,
-                text: currentImage.details,
+                text: currentImage.details + '\n' + currentImage.publish_date,
                 reply_markup: JSON.stringify({ inline_keyboard: [[{ text: CLOSE_DETAILS, callback_data: (CLOSE_DETAILS) }]] }),
                 disable_web_page_preview: true,
                 parse_mode: 'HTML'
@@ -175,7 +175,7 @@ module.exports.handler = (event, context, callback) => {
         media: JSON.stringify({
           type: isImageFormat(image, 'gif') ? 'animation' : 'photo',
           media: image.telegram_id ? image.telegram_id : image.url,
-          caption: image.publish_date + ': '+ image.title
+          caption: image.title
         }),
         reply_markup: getImageReplyMarkup(image)
       }
