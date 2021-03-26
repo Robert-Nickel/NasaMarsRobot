@@ -28,10 +28,6 @@ module.exports.handler = (event, context, callback) => {
     }).promise().then((userData) => {
       const user = userData.Item
       if (callback_query_data === NEXT) {
-        console.log('---')
-        console.log('message_id: ' + message_id)
-        console.log('---')
-
         if (user.next_image === FINAL) {
           postMessage(chatId, 'You reached the end of the archive. But not the end of human knowledge. Keep going: https://en.wikipedia.org/wiki/Main_Page', (error, response, body) => {
             return callback(null, {
@@ -54,16 +50,13 @@ module.exports.handler = (event, context, callback) => {
                   chat_id: chatId,
                   message_id: message_id,
                   media: JSON.stringify({
-                    type: 'photo',
+                    type: isImageFormat(image, 'gif') ? 'animation' : 'photo',
                     media: image.telegram_id ? image.telegram_id : image.url,
                     caption: image.title
                   }),
                   reply_markup: getReplyMarkup(image)
                 }
               }, (error, response, body) => {
-                console.log('...')
-                console.log(body)
-                console.log('...')
                 user.current_image = image.id
                 if (image.next) {
                   user.next_image = image.next
@@ -77,23 +70,6 @@ module.exports.handler = (event, context, callback) => {
                     });
                   });
               })
-
-              /*
-              postImage(chatId, image, () => {
-                user.current_image = image.id
-                if (image.next) {
-                  user.next_image = image.next
-                } else {
-                  user.next_image = FINAL
-                }
-                documentClient.put({ TableName: "mars_users", Item: user }).promise()
-                  .then(() => {
-                    return callback(null, {
-                      statusCode: 200
-                    });
-                  });
-              })
-              */
             })
         }
       } else if (callback_query_data.startsWith(DETAILS)) {
