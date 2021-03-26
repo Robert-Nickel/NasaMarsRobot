@@ -57,7 +57,12 @@ module.exports.handler = (event, context, callback) => {
             })
         })
     } else {
-      postMessage(chatId, text + ' isn\'t marsian.', (error, response, body) => { })
+      request.post(BASE_URL + 'sendMessage', {
+        form: {
+          chat_id: chatId,
+          text: text + ' isn\'t marsian.'
+        }
+      });
     }
     return callback(null, {
       statusCode: 200
@@ -73,7 +78,6 @@ module.exports.handler = (event, context, callback) => {
       }
     }).promise().then((userData) => {
       let user = userData.Item
-
       documentClient
         .get({
           TableName: "mars_images",
@@ -107,12 +111,6 @@ module.exports.handler = (event, context, callback) => {
                       });
                   })
                 })
-            } else {
-              postMessage(chatId, 'You reached the end of the archive. But not the end of human knowledge. Keep going: https://en.wikipedia.org/wiki/Main_Page', (error, response, body) => {
-                return callback(null, {
-                  statusCode: 200
-                });
-              })
             }
           } else if (callback_query_data === NEXT_IMAGE) {
             if (currentImage.next) {
@@ -136,23 +134,17 @@ module.exports.handler = (event, context, callback) => {
                       });
                   })
                 })
-            } else {
-              postMessage(chatId, 'This was the latest image. Try tomorrow!', (error, response, body) => {
-                return callback(null, {
-                  statusCode: 200
-                });
-              })
             }
           }
         })
     })
   }
 
-  function updateImage(chatId, messageId, image, updateImageCallback) {
+  function updateImage(chatId, imageMessageId, image, updateImageCallback) {
     request.post(BASE_URL + 'editMessageMedia', {
       form: {
         chat_id: chatId,
-        message_id: messageId,
+        message_id: imageMessageId,
         media: JSON.stringify({
           type: isImageFormat(image, 'gif') ? 'animation' : 'photo',
           media: image.telegram_id ? image.telegram_id : image.url,
@@ -165,27 +157,14 @@ module.exports.handler = (event, context, callback) => {
     })
   }
 
-  function postMessage(chatId, text, sendMessageCallback) {
-    request.post(BASE_URL + 'sendMessage', {
-      form: {
-        chat_id: chatId,
-        text: text,
-        disable_web_page_preview: true,
-        parse_mode: 'HTML'
-      }
-    }, (error, response, body) => {
-      sendMessageCallback(error, response, body)
-    });
-  }
-
   function getReplyMarkup(image) {
     const previous = { text: PREVIOUS_IMAGE, callback_data: PREVIOUS_IMAGE }
     const next = { text: NEXT_IMAGE, callback_data: NEXT_IMAGE }
     let navigation = []
-    if(image.previous) {
+    if (image.previous) {
       navigation.push(previous)
     }
-    if(image.next) {
+    if (image.next) {
       navigation.push(next)
     }
 
