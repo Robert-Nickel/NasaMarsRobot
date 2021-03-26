@@ -23,7 +23,7 @@ module.exports.handler = (event, context, callback) => {
                         const $ = cheerio.load(html);
                         image.url = 'https://mars.nasa.gov' + $('#main_image')[0].attribs.src
                         image.title = $('.article_title').text()
-                        image.publish_date = $('.wysiwyg_content > p').first().text().split('\n')[0]
+                        image.publish_date = $('.wysiwyg_content > p').first().text()
                         // scrape the details
                         const paragraphs = $('.wysiwyg_content > p').toString().split('</p><p>')
                         paragraphs.shift() // remove the publish_date
