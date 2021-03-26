@@ -60,12 +60,12 @@ module.exports.handler = (event, context, callback) => {
               })
             })
         }
-      } else if (callback_query_data === DETAILS) {
+      } else if (callback_query_data.startsWith(DETAILS)) {
         documentClient
           .get({
             TableName: "mars_images",
             Key: {
-              id: user.current_image
+              id: callback_query_data.split('|')[1]
             }
           })
           .promise()
@@ -140,11 +140,11 @@ module.exports.handler = (event, context, callback) => {
     });
   }
 
-  function getReplyMarkup(source) {
+  function getReplyMarkup(image) {
     return JSON.stringify({
       inline_keyboard: [
-        [{ text: DETAILS, callback_data: DETAILS }],
-        [{ text: 'View Source', url: source }],
+        [{ text: DETAILS, callback_data: DETAILS + '|' + image.id }],
+        [{ text: 'View Source', url: NASA_RESOURCES_URL + image.id }],
         [{ text: NEXT, callback_data: NEXT }]
       ]
     })
@@ -157,7 +157,7 @@ module.exports.handler = (event, context, callback) => {
           chat_id: chatId,
           photo: image.telegram_id ? image.telegram_id : image.url,
           caption: image.title,
-          reply_markup: getReplyMarkup(NASA_RESOURCES_URL + image.id)
+          reply_markup: getReplyMarkup(image)
         }
       }, (error, response, body) => {
         addTelegramIdIfMissing(image, body)
@@ -171,7 +171,7 @@ module.exports.handler = (event, context, callback) => {
           chat_id: chatId,
           animation: image.telegram_id ? image.telegram_id : image.url,
           caption: image.title,
-          reply_markup: getReplyMarkup(NASA_RESOURCES_URL + image.id)
+          reply_markup: getReplyMarkup(image)
         }
       }, (error, response, body) => {
         addTelegramIdIfMissing(image, body)
