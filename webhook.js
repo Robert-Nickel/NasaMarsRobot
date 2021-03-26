@@ -140,7 +140,7 @@ module.exports.handler = (event, context, callback) => {
             request.post(BASE_URL + 'sendMessage', {
               form: {
                 chat_id: chatId,
-                text: currentImage.details,
+                text: currentImage.details + '\n' + currentImage.publish_date,
                 reply_markup: JSON.stringify({ inline_keyboard: [[{ text: CLOSE_DETAILS, callback_data: (CLOSE_DETAILS) }]] }),
                 disable_web_page_preview: true,
                 parse_mode: 'HTML'
