@@ -6,10 +6,11 @@ const AWS = require("aws-sdk");
 module.exports.handler = (event, context, callback) => {
   const token = process.env.BOT_TOKEN;
   const BASE_URL = `https://api.telegram.org/bot${token}/`
-  const PREVIOUS_IMAGE = "<< Previous Image"
-  const NEXT_IMAGE = "Next Image >>"
-  const FINAL = "final"
-  const NASA_RESOURCES_URL = "https://mars.nasa.gov/resources/"
+  const NASA_RESOURCES_URL = 'https://mars.nasa.gov/resources/'
+  const PREVIOUS_IMAGE = '<< Previous Image'
+  const NEXT_IMAGE = 'Next Image >>'
+  const DETAILS = 'Details'
+  const CLOSE_DETAILS = 'Close Details'
 
   const documentClient = new AWS.DynamoDB.DocumentClient({
     region: "eu-central-1",
@@ -47,8 +48,7 @@ module.exports.handler = (event, context, callback) => {
                     TableName: "mars_users",
                     Item: {
                       id: chatId,
-                      current_image: latestImage.id,
-                      previous_image: latestImage.previous
+                      current_image: latestImage.id
                     },
                   })
                   .promise()
@@ -135,6 +135,32 @@ module.exports.handler = (event, context, callback) => {
                   })
                 })
             }
+          } else if (callback_query_data === DETAILS) {
+            request.post(BASE_URL + 'sendMessage', {
+              form: {
+                chat_id: chatId,
+                text: currentImage.details,
+                reply_markup: JSON.stringify({ inline_keyboard: [[{ text: CLOSE_DETAILS, callback_data: (CLOSE_DETAILS) }]] }),
+                disable_web_page_preview: true,
+                parse_mode: 'HTML'
+              }
+            }, (error, response, body) => {
+              return callback(null, {
+                statusCode: 200
+              });
+            })
+          } else if (callback_query_data === CLOSE_DETAILS) {
+            request.post(BASE_URL + 'deleteMessage', {
+              form: {
+                chat_id: chatId,
+                message_id: messageId
+              }
+            }, (error, response, body) => {
+              // TODO: if message > 48h will fail. Handle by telling the user to delete the message manually.
+              return callback(null, {
+                statusCode: 200
+              });
+            })
           }
         })
     })
@@ -150,14 +176,14 @@ module.exports.handler = (event, context, callback) => {
           media: image.telegram_id ? image.telegram_id : image.url,
           caption: image.title
         }),
-        reply_markup: getReplyMarkup(image)
+        reply_markup: getImageReplyMarkup(image)
       }
     }, (error, response, body) => {
       updateImageCallback(error, response, body)
     })
   }
 
-  function getReplyMarkup(image) {
+  function getImageReplyMarkup(image) {
     const previous = { text: PREVIOUS_IMAGE, callback_data: PREVIOUS_IMAGE }
     const next = { text: NEXT_IMAGE, callback_data: NEXT_IMAGE }
     let navigation = []
@@ -171,6 +197,7 @@ module.exports.handler = (event, context, callback) => {
     return JSON.stringify({
       inline_keyboard: [
         navigation,
+        [{ text: 'Details', callback_data: DETAILS }], // TODO: id for details?
         [{ text: 'View Source', url: NASA_RESOURCES_URL + image.id }]
       ]
     })
@@ -183,7 +210,7 @@ module.exports.handler = (event, context, callback) => {
           chat_id: chatId,
           photo: image.telegram_id ? image.telegram_id : image.url,
           caption: image.title,
-          reply_markup: getReplyMarkup(image)
+          reply_markup: getImageReplyMarkup(image)
         }
       }, (error, response, body) => {
         addTelegramIdIfMissing(image, body)
@@ -197,7 +224,7 @@ module.exports.handler = (event, context, callback) => {
           chat_id: chatId,
           animation: image.telegram_id ? image.telegram_id : image.url,
           caption: image.title,
-          reply_markup: getReplyMarkup(image)
+          reply_markup: getImageReplyMarkup(image)
         }
       }, (error, response, body) => {
         addTelegramIdIfMissing(image, body)
