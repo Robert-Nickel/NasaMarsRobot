@@ -7,7 +7,6 @@ module.exports.handler = (event, context, callback) => {
   const token = process.env.BOT_TOKEN;
   const BASE_URL = `https://api.telegram.org/bot${token}/`
   const NEXT = "Next"
-  const DETAILS = "Details"
   const FINAL = "final"
   const NASA_RESOURCES_URL = "https://mars.nasa.gov/resources/"
 
@@ -72,23 +71,6 @@ module.exports.handler = (event, context, callback) => {
               })
             })
         }
-      } else if (callback_query_data.startsWith(DETAILS)) {
-        documentClient
-          .get({
-            TableName: "mars_images",
-            Key: {
-              id: callback_query_data.split('|')[1]
-            }
-          })
-          .promise()
-          .then((data) => {
-            const image = data.Item
-            postMessage(chatId, image.details, (error, response, body) => {
-              return callback(null, {
-                statusCode: 200
-              });
-            })
-          })
       }
     })
   } else {
@@ -155,7 +137,6 @@ module.exports.handler = (event, context, callback) => {
   function getReplyMarkup(image) {
     return JSON.stringify({
       inline_keyboard: [
-        [{ text: DETAILS, callback_data: DETAILS + '|' + image.id }],
         [{ text: 'View Source', url: NASA_RESOURCES_URL + image.id }],
         [{ text: NEXT, callback_data: NEXT }]
       ]
