@@ -16,10 +16,6 @@ module.exports.handler = (event, context, callback) => {
   });
 
   const body = JSON.parse(event.body)
-  console.log('---')
-  console.log(body)
-  console.log('---')
-
   if (typeof body.callback_query !== 'undefined') {
     const callback_query_data = body.callback_query.data
     const chatId = body.callback_query.from.id.toString()
@@ -32,7 +28,11 @@ module.exports.handler = (event, context, callback) => {
       const user = userData.Item
       if (callback_query_data === NEXT) {
         if (user.next_image === FINAL) {
-          postMessage(chatId, 'You reached the end of the archive. But not the end of human knowledge. Keep going: https://en.wikipedia.org/wiki/Main_Page', (error, response, body) => { })
+          postMessage(chatId, 'You reached the end of the archive. But not the end of human knowledge. Keep going: https://en.wikipedia.org/wiki/Main_Page', (error, response, body) => {
+            return callback(null, {
+              statusCode: 200
+            });
+          })
         } else {
           documentClient
             .get({
@@ -132,7 +132,8 @@ module.exports.handler = (event, context, callback) => {
       form: {
         chat_id: chatId,
         text: text,
-        disable_web_page_preview: true
+        disable_web_page_preview: true,
+        parse_mode: 'HTML'
       }
     }, (error, response, body) => {
       sendMessageCallback(error, response, body)
@@ -183,7 +184,6 @@ module.exports.handler = (event, context, callback) => {
 
   function addTelegramIdIfMissing(image, body) {
     if (!(image.telegram_id)) {
-      console.log('This is a new image. The telegram_id will be added.')
       const response_body = JSON.parse(body)
       if (response_body.ok) {
         image.telegram_id = isPhoto(image) ? response_body.result.photo.pop().file_id : response_body.result.document.file_id
