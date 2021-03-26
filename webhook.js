@@ -11,6 +11,7 @@ module.exports.handler = (event, context, callback) => {
   const NEXT_IMAGE = 'Newer Image ⇢'
   const DETAILS = 'Explanation 💡'
   const CLOSE_DETAILS = '⇡ Close Explanation ⇡'
+  const SOURCE = 'View Source ℹ️'
 
   const documentClient = new AWS.DynamoDB.DocumentClient({
     region: "eu-central-1",
@@ -197,7 +198,7 @@ module.exports.handler = (event, context, callback) => {
     return JSON.stringify({
       inline_keyboard: [
         navigation,
-        [{ text: 'Details', callback_data: DETAILS }, { text: 'View Source', url: NASA_RESOURCES_URL + image.id }]
+        [{ text: DETAILS, callback_data: DETAILS }, { text: SOURCE, url: NASA_RESOURCES_URL + image.id }]
       ]
     })
   }
