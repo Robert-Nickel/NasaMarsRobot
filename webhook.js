@@ -19,6 +19,7 @@ module.exports.handler = (event, context, callback) => {
   if (typeof body.callback_query !== 'undefined') {
     const callback_query_data = body.callback_query.data
     const chatId = body.callback_query.from.id.toString()
+    const message_id = body.callback_query.message.message_id
     documentClient.get({
       TableName: "mars_users",
       Key: {
@@ -27,6 +28,10 @@ module.exports.handler = (event, context, callback) => {
     }).promise().then((userData) => {
       const user = userData.Item
       if (callback_query_data === NEXT) {
+        console.log('---')
+        console.log('message_id: ' + message_id)
+        console.log('---')
+
         if (user.next_image === FINAL) {
           postMessage(chatId, 'You reached the end of the archive. But not the end of human knowledge. Keep going: https://en.wikipedia.org/wiki/Main_Page', (error, response, body) => {
             return callback(null, {
@@ -44,6 +49,36 @@ module.exports.handler = (event, context, callback) => {
             .promise()
             .then((imageData) => {
               const image = imageData.Item
+              request.post(BASE_URL + 'editMessageMedia', {
+                form: {
+                  chat_id: chatId,
+                  message_id: message_id,
+                  media: JSON.stringify({
+                    type: 'photo',
+                    media: image.telegram_id ? image.telegram_id : image.url,
+                    caption: image.title
+                  }),
+                  reply_markup: getReplyMarkup(image)
+                }
+              }, (error, response, body) => {
+                console.log('...')
+                console.log(body)
+                console.log('...')
+                user.current_image = image.id
+                if (image.next) {
+                  user.next_image = image.next
+                } else {
+                  user.next_image = FINAL
+                }
+                documentClient.put({ TableName: "mars_users", Item: user }).promise()
+                  .then(() => {
+                    return callback(null, {
+                      statusCode: 200
+                    });
+                  });
+              })
+
+              /*
               postImage(chatId, image, () => {
                 user.current_image = image.id
                 if (image.next) {
@@ -58,6 +93,7 @@ module.exports.handler = (event, context, callback) => {
                     });
                   });
               })
+              */
             })
         }
       } else if (callback_query_data.startsWith(DETAILS)) {
