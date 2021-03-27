@@ -7,8 +7,8 @@ module.exports.handler = (event, context, callback) => {
   const token = process.env.BOT_TOKEN;
   const BASE_URL = `https://api.telegram.org/bot${token}/`
   const NASA_RESOURCES_URL = 'https://mars.nasa.gov/resources/'
-  const PREVIOUS_IMAGE = '⇠ Older Image'
-  const NEXT_IMAGE = 'Newer Image ⇢'
+  const PREVIOUS_IMAGE = '« Older Image'
+  const NEXT_IMAGE = 'Newer Image »'
   const DETAILS = 'Explanation 💡'
   const CLOSE_DETAILS = '⇡ Close Explanation ⇡'
   const SOURCE = 'View Source ℹ️'
@@ -53,7 +53,13 @@ module.exports.handler = (event, context, callback) => {
                     },
                   })
                   .promise()
-                  .then(() => console.log('user created'))
+                  .then(() => {
+                    console.log('user created')
+                    return callback(null, {
+                      statusCode: 200
+                    });
+                  }
+                  )
               })
             })
         })
@@ -63,11 +69,12 @@ module.exports.handler = (event, context, callback) => {
           chat_id: chatId,
           text: text + ' isn\'t marsian.'
         }
+      }, (error, respose, body) => {
+        return callback(null, {
+          statusCode: 200
+        });
       });
     }
-    return callback(null, {
-      statusCode: 200
-    });
   } else {
     const callback_query_data = body.callback_query.data
     const chatId = body.callback_query.from.id.toString()
@@ -175,7 +182,7 @@ module.exports.handler = (event, context, callback) => {
         media: JSON.stringify({
           type: isImageFormat(image, 'gif') ? 'animation' : 'photo',
           media: image.telegram_id ? image.telegram_id : image.url,
-          caption: image.title
+          caption: getCaption(image)
         }),
         reply_markup: getImageReplyMarkup(image)
       }
@@ -204,11 +211,11 @@ module.exports.handler = (event, context, callback) => {
   }
 
   function postImage(chatId, image, postImageCallback) {
-    request.post(BASE_URL + isImageFormat(image, 'gif') ? 'sendAnimation' : 'sendPhoto', {
+    request.post(BASE_URL + (isImageFormat(image, 'gif') ? 'sendAnimation' : 'sendPhoto'), {
       form: {
         chat_id: chatId,
         photo: image.telegram_id ? image.telegram_id : image.url,
-        caption: image.title,
+        caption: getCaption(image),
         reply_markup: getImageReplyMarkup(image)
       }
     }, (error, response, body) => {
@@ -240,5 +247,9 @@ module.exports.handler = (event, context, callback) => {
 
   function isImageFormat(image, format) {
     return image.url.endsWith(format)
+  }
+
+  function getCaption(image) {
+    return image.title + '\n' + image.publish_date
   }
 };
