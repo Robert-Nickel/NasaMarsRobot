@@ -27,11 +27,11 @@ module.exports.handler = (event, context, callback) => {
                             image.url = 'https://mars.nasa.gov' + mainImage.attribs.src
                         }
                         else {
-                            console.log('#main_image cannot be found')
+                            console.log('image url not found')
                             image.url = 'https://sceptermarketing.com/wp-content/uploads/2018/10/Http-News-Html-Error-404-Was-Not-Found-Page.jpg'
                         }
-                        image.title = removeFromString($('.article_title').text(), '\n')
-                        image.publish_date = removeFromString($('.wysiwyg_content > p').first().text(), '\n')
+                        image.title = removeLineBreaks($('.article_title').text())
+                        image.publish_date = removeLineBreaks($('.wysiwyg_content > p').first().text())
                         // scrape the details
                         const paragraphs = $('.wysiwyg_content > p').toString().split('</p><p>')
                         paragraphs.shift() // remove the publish_date
@@ -73,11 +73,6 @@ function removeHtmlTags(text, htmlTags) {
     return result
 }
 
-function removeFromString(text, toRemove) {
-    let result = text
-    if(text.startsWith(toRemove)) {
-        text = text.split(toRemove)[1]
-    } else {
-        text = text.split(toRemove)[0]
-    }
+function removeLineBreaks(text) {
+    return text.startsWith('\n') ? text.split('\n')[1] : text.split('\n')[0]
 }
