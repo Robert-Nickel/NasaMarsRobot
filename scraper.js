@@ -21,9 +21,17 @@ module.exports.handler = (event, context, callback) => {
                     fetchData('https://mars.nasa.gov/resources/' + image.id).then((res) => {
                         const html = res.data;
                         const $ = cheerio.load(html);
-                        image.url = 'https://mars.nasa.gov' + $('#main_image')[0].attribs.src
-                        image.title = $('.article_title').text().split('\n')[0]
-                        image.publish_date = $('.wysiwyg_content > p').first().text().split('\n')[0]
+
+                        const mainImage = $('#main_image')[0]
+                        if (mainImage) {
+                            image.url = 'https://mars.nasa.gov' + mainImage.attribs.src
+                        }
+                        else {
+                            console.log('#main_image cannot be found')
+                            image.url = 'https://sceptermarketing.com/wp-content/uploads/2018/10/Http-News-Html-Error-404-Was-Not-Found-Page.jpg'
+                        }
+                        image.title = removeFromString($('.article_title').text(), '\n')
+                        image.publish_date = removeFromString($('.wysiwyg_content > p').first().text(), '\n')
                         // scrape the details
                         const paragraphs = $('.wysiwyg_content > p').toString().split('</p><p>')
                         paragraphs.shift() // remove the publish_date
@@ -48,8 +56,6 @@ module.exports.handler = (event, context, callback) => {
     });
 
     async function fetchData(url) {
-        console.log("Crawling data... at url " + url)
-        // make http call to url
         let response = await axios(url).catch((err) => console.log(err));
         if (response.status !== 200) {
             console.log("Error occurred while fetching data");
@@ -65,4 +71,13 @@ function removeHtmlTags(text, htmlTags) {
         result = result.split('<' + htmlTag + '>').join('').split('</' + htmlTag + '>').join('')
     })
     return result
+}
+
+function removeFromString(text, toRemove) {
+    let result = text
+    if(text.startsWith(toRemove)) {
+        text = text.split(toRemove)[1]
+    } else {
+        text = text.split(toRemove)[0]
+    }
 }
