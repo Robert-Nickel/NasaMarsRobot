@@ -2,10 +2,7 @@
 
 const axios = require('axios');
 const cheerio = require('cheerio');
-const request = require('request');
 const AWS = require("aws-sdk");
-const { html } = require('cheerio');
-
 
 module.exports.handler = (event, context, callback) => {
     const documentClient = new AWS.DynamoDB.DocumentClient({
