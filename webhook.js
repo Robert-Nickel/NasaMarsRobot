@@ -49,7 +49,8 @@ module.exports.handler = (event, context, callback) => {
                     TableName: "mars_users",
                     Item: {
                       id: chatId,
-                      current_image: latestImage.id
+                      current_image: latestImage.id,
+                      subscribed: false
                     },
                   })
                   .promise()

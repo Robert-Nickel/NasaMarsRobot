@@ -2,7 +2,6 @@
 
 const AWS = require("aws-sdk");
 const request = require("request");
-const lambda = new AWS.Lambda();
 
 module.exports.handler = (event, context, callback) => {
     const documentClient = new AWS.DynamoDB.DocumentClient({

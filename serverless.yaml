@@ -23,3 +23,5 @@ functions:
     handler: idmanager.handler
   updatechecker:
     handler: updatechecker.handler
+  contentalarm:
+    handler: contentalarm.handler
