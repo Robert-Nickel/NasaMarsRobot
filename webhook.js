@@ -7,7 +7,7 @@ module.exports.handler = (event, context, callback) => {
   const token = process.env.BOT_TOKEN;
   const BASE_URL = `https://api.telegram.org/bot${token}/`
   const NASA_RESOURCES_URL = 'https://mars.nasa.gov/resources/'
-  const PREVIOUS_IMAGE = '« Older Image'
+  const PREV_IMAGE = '« Older Image'
   const NEXT_IMAGE = 'Newer Image »'
   const DETAILS = 'Explanation 💡'
   const CLOSE_DETAILS = '⇡ Close Explanation ⇡'
@@ -37,7 +37,7 @@ module.exports.handler = (event, context, callback) => {
             .get({
               TableName: "mars_images",
               Key: {
-                id: indexToLatestImage.previous
+                id: indexToLatestImage.prev
               }
             })
             .promise()
@@ -97,20 +97,20 @@ module.exports.handler = (event, context, callback) => {
         .then((currentImageData) => {
           const currentImage = currentImageData.Item
 
-          if (callback_query_data === PREVIOUS_IMAGE) {
-            if (currentImage.previous) {
+          if (callback_query_data === PREV_IMAGE) {
+            if (currentImage.prev) {
               documentClient
                 .get({
                   TableName: "mars_images",
                   Key: {
-                    id: currentImage.previous
+                    id: currentImage.prev
                   }
                 })
                 .promise()
-                .then((previousImageData) => {
-                  const previousImage = previousImageData.Item
-                  updateImage(chatId, messageId, previousImage, (error, response, body) => {
-                    user.current_image = previousImage.id
+                .then((prevImageData) => {
+                  const prevImage = prevImageData.Item
+                  updateImage(chatId, messageId, prevImage, (error, response, body) => {
+                    user.current_image = prevImage.id
                     documentClient.put({ TableName: "mars_users", Item: user }).promise()
                       .then(() => {
                         return callback(null, {
@@ -192,11 +192,11 @@ module.exports.handler = (event, context, callback) => {
   }
 
   function getImageReplyMarkup(image) {
-    const previous = { text: PREVIOUS_IMAGE, callback_data: PREVIOUS_IMAGE }
+    const prev = { text: PREV_IMAGE, callback_data: PREV_IMAGE }
     const next = { text: NEXT_IMAGE, callback_data: NEXT_IMAGE }
     let navigation = []
-    if (image.previous) {
-      navigation.push(previous)
+    if (image.prev) {
+      navigation.push(prev)
     }
     if (image.next) {
       navigation.push(next)
@@ -211,13 +211,18 @@ module.exports.handler = (event, context, callback) => {
   }
 
   function postImage(chatId, image, postImageCallback) {
-    request.post(BASE_URL + (isImageFormat(image, 'gif') ? 'sendAnimation' : 'sendPhoto'), {
-      form: {
-        chat_id: chatId,
-        photo: image.telegram_id ? image.telegram_id : image.url,
-        caption: getCaption(image),
-        reply_markup: getImageReplyMarkup(image)
-      }
+    let form = {
+      chat_id: chatId,
+      caption: getCaption(image),
+      reply_markup: getImageReplyMarkup(image)
+    }
+    if (isPhoto(image)) {
+      form.photo = image.telegram_id ? image.telegram_id : image.url
+    } else {
+      form.animation = image.telegram_id ? image.telegram_id : image.url
+    }
+    request.post(BASE_URL + (isPhoto(image) ? 'sendPhoto' : 'sendAnimation'), {
+      form: form
     }, (error, response, body) => {
       addTelegramIdIfMissing(image, body)
       if (postImageCallback) {

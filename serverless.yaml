@@ -19,5 +19,7 @@ functions:
           method: post
   scraper:
     handler: scraper.handler
-  idealer:
-    handler: idealer.handler
+  idmanager:
+    handler: idmanager.handler
+  updatechecker:
+    handler: updatechecker.handler
